@@ -324,30 +324,53 @@ module XeroGateway
       
       response
     end
-    
-    #
-    # Creates an array of credit_notes with a single API request.
-    # 
-    # Usage :
-    #  credit_notes = [XeroGateway::CreditNote.new(...), XeroGateway::CreditNote.new(...)]
-    #  result = gateway.create_credit_notes(credit_notes)
-    #
-    def create_credit_notes(credit_notes)
-      b = Builder::XmlMarkup.new
-      request_xml = b.CreditNotes {
-        credit_notes.each do | credit_note |
-          credit_note.to_xml(b)
-        end
-      }
-      
-      response_xml = http_put(@client, "#{@xero_url}/CreditNotes", request_xml, {})
 
-      response = parse_response(response_xml, {:request_xml => request_xml}, {:request_signature => 'PUT/credit_notes'})
-      response.credit_notes.each_with_index do | response_credit_note, index |
-        credit_notes[index].credit_note_id = response_credit_note.credit_note_id if response_credit_note && response_credit_note.credit_note_id
+    # --------------------
+
+    # Retrieves a single payment
+    #
+    # Usage : get_payment("297c2dc5-cc47-4afd-8ec8-74990b8761e9") # By ID
+    #         get_payment("OIT-12345") # By number
+    def get_payment(payment_id_or_number)
+      request_params = {}
+
+      url  = "#{@xero_url}/Payments/#{URI.escape(payment_id_or_number)}"
+
+      response_xml = http_get(@client, url, request_params)
+
+      parse_response(response_xml, {:request_params => request_params}, {:request_signature => 'GET/Payment'})
+    end
+
+    # Factory method for building new Payment objects associated with this gateway.
+    def build_payment(payment = {})
+      case payment
+      when Payment then     payment.gateway = self
+      when Hash then        payment = Payment.new(payment.merge(:gateway => self))
       end
+      payment
+    end
+
+    # Creates an payment in Xero based on an payment object.
+    #
+    # Usage : 
+    #
+    # TODO!
+    def create_payment(payment)
+      request_xml = payment.to_xml
+      response_xml = http_put(@client, "#{@xero_url}/Payments", request_xml)
+      response = parse_response(response_xml, {:request_xml => request_xml}, {:request_signature => 'PUT/payment'})
+
+      # Xero returns credit_notes inside an <Payments> tag, even though there's only ever
+      # one for this request
+      response.response_item = response.payments.first
+
+      if response.success? && response.payment && response.payment.payment_id
+        payment.payment_id = response.payment.payment_id
+      end
+
       response
     end
+    # --------------------
 
     # Creates a bank transaction in Xero based on a bank transaction object.
     #
