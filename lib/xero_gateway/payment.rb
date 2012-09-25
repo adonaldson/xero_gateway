@@ -108,7 +108,7 @@ module XeroGateway
     end
 
     def ensure_account_id_is_a_valid_guid_or_blank
-      if account_id.nil? || account_id !~ GUID_REGEX
+      if !account_id.nil? && account_id !~ GUID_REGEX
         @errors << ['account_id', 'must be a valid Xero GUID']
       end
     end
