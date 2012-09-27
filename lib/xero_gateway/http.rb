@@ -3,9 +3,15 @@ module XeroGateway
     OPEN_TIMEOUT = 10 unless defined? OPEN_TIMEOUT
     READ_TIMEOUT = 60 unless defined? READ_TIMEOUT
     ROOT_CA_FILE = File.join(File.dirname(__FILE__), 'ca-certificates.crt') unless defined? ROOT_CA_FILE
-    
+
     def http_get(client, url, extra_params = {})
       http_request(client, :get, url, nil, extra_params)
+    end
+
+    def http_get_pdf(client, url, extra_params = {})
+      http_request(client, :get, url, nil, extra_params, {
+        'Accept' => 'application/pdf'
+      })
     end
 
     def http_post(client, url, body, extra_params = {})
@@ -15,10 +21,10 @@ module XeroGateway
     def http_put(client, url, body, extra_params = {})
       http_request(client, :put, url, body, extra_params)
     end
-    
+
     private
     
-      def http_request(client, method, url, body, params = {})
+      def http_request(client, method, url, body, params = {}, additional_headers = {})
         # headers = {'Accept-Encoding' => 'gzip, deflate'}
 
         headers = { 'charset' => 'utf-8' }
@@ -29,6 +35,8 @@ module XeroGateway
 
         # HAX.  Xero completely misuse the If-Modified-Since HTTP header.
         headers['If-Modified-Since'] = params.delete(:ModifiedAfter).utc.strftime("%Y-%m-%dT%H:%M:%S") if params[:ModifiedAfter]
+
+        headers.merge!(additional_headers)
 
         if params.any?
           url += "?" + params.map {|key,value| "#{CGI.escape(key.to_s)}=#{CGI.escape(value.to_s)}"}.join("&")
@@ -51,7 +59,7 @@ module XeroGateway
         # end
         
         logger.info("\n== [#{Time.now.to_s}] XeroGateway Request: #{uri.request_uri} ") if self.logger
-        
+
         response = case method
           when :get   then    client.get(uri.request_uri, headers)
           when :post  then    client.post(uri.request_uri, { :xml => body }, headers)

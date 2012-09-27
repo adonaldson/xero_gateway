@@ -1,9 +1,9 @@
 module XeroGateway
-  
+
   class Gateway
     include Http
     include Dates
-      
+
     attr_accessor :client, :xero_url, :logger
     
     extend Forwardable
@@ -160,6 +160,14 @@ module XeroGateway
       response_xml = http_get(@client, url, request_params)
 
       parse_response(response_xml, {:request_params => request_params}, {:request_signature => 'GET/Invoice'})
+    end
+
+    def get_invoice_pdf(invoice_id_or_number)
+      request_params = {}
+
+      url  = "#{@xero_url}/Invoices/#{URI.escape(invoice_id_or_number)}"
+
+      response_blob = http_get_pdf(@client, url, request_params)
     end
     
     # Factory method for building new Invoice objects associated with this gateway.
